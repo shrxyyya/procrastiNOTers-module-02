@@ -1,0 +1,24 @@
+
+html,
+body,
+#root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(212, 255, 246);
+}
+
+div {
+  padding: 3px;
+}
+
+.controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  border: 1px solid black;
+  background-color: rgb(254, 248, 240);
+}
+
