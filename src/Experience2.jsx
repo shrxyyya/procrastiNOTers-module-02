@@ -1,7 +1,9 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Center, OrbitControls, Text3D } from '@react-three/drei';
 import { useState, useRef, useEffect } from 'react';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
+import { FontLoader } from 'three/examples/jsm/Addons.js';
+import { GLTFExporter } from 'three/examples/jsm/Addons.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import * as THREE from 'three';
 
 // animated text component
@@ -15,7 +17,7 @@ function AnimatedText({ text, fontSize, fontColor, selectedFont, transparency, s
             textRef.current.rotation.set(0, 0, 0);
             clock.current.start();
         }
-    }, [animationType]);    // dependency array -> useeffect relies on animationtype
+    }, [animationType]); // dependency array -> useEffect relies on animationType
 
     useFrame(() => {
         const elapsedTime = clock.current.getElapsedTime();
@@ -65,7 +67,7 @@ export default function App() {
         setFontSize(event.target.value);
     };
 
-    const handleFontColor = (event) => {
+    const handleFontColorChange = (event) => {
         setFontColor(event.target.value);
     };
 
@@ -86,37 +88,51 @@ export default function App() {
     };
 
     const handleExport = () => {
-        // exporting only the static text without animations
-        const exporter = new GLTFExporter();
-        exporter.parse(
-            <Text3D
-                font={`./fonts/${selectedFont}.json`}
-                size={fontSize}
-                height={0.5}
-                curveSegments={12}
-                bevelEnabled
-                bevelThickness={0.0002}
-                bevelSize={0.02}
-                bevelOffset={0}
-                bevelSegments={0.5}
-                scale={scale}
-            >
-                {text}
-                <meshPhongMaterial color={fontColor} transparent opacity={transparency} />
-            </Text3D>,
-            (result) => {
-                const output = JSON.stringify(result, null, 2); // converts the result (in GLTF format) to a JSON string
-                const blob = new Blob([output], { type: 'application/json' }); // blob = immutable raw data
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url; // <a href> link
-                link.download = '3d-text.glb';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-            { binary: true } // for .glb
-        );
+        const scene = new THREE.Scene();
+
+        const loader = new FontLoader();
+        loader.load(`./fonts/${selectedFont}.json`, (font) => {
+            const textGeometry = new TextGeometry(text, {
+                font: font,
+                size: fontSize,
+                height: 0.5,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.0002,
+                bevelSize: 0.02,
+                bevelOffset: 0,
+                bevelSegments: 0.5,
+            });
+
+            const textMaterial = new THREE.MeshPhongMaterial({
+                color: fontColor,
+                transparent: true,
+                opacity: transparency,
+            });
+
+            // creating a mesh as GLTFexporter doesn't accept jsx, instead accepts .gtlf or .glb -> mesh is a three.js object
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.scale.set(...scale);
+
+            scene.add(textMesh);
+
+            const exporter = new GLTFExporter();
+            exporter.parse(
+                scene,
+                (result) => {
+                    const output = JSON.stringify(result, null, 2);
+                    const blob = new Blob([output], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = '3d-text.glb';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                { binary: true }
+            );
+        });
     };
 
     return (
@@ -147,11 +163,11 @@ export default function App() {
                 </div>
                 <div>
                     <label>Font Color: </label>
-                    <input type="color" value={fontColor} onChange={handleFontColor} />
+                    <input type="color" value={fontColor} onChange={handleFontColorChange} />
                 </div>
                 <div>
                     <label>Text Transparency: </label>
-                    <input type="range" name="Transparency" min={0} max={1} step={0.1} value={transparency} onChange={handleTransparencyChange} />
+                    <input type="range" min={0} max={1} step={0.1} value={transparency} onChange={handleTransparencyChange} />
                 </div>
                 <div>
                     <label>Text Scaling: </label>
